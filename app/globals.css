@@ -1,0 +1,156 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=DM+Sans:wght@400;500;600&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'DM Sans', sans-serif;
+
+  --azul:        #1a3a6b;
+  --azul-claro:  #e8eef7;
+  --azul-medio:  #2d5aa0;
+  --azul-oscuro: #0f2444;
+  --dorado:      #c9a227;
+  --dorado-claro:#fdf3d0;
+  --dorado-oscuro:#8a6d0b;
+
+  --fondo:       #f5f7fa;
+  --superficie:  #ffffff;
+  --borde:       #dde3ed;
+  --texto:       #1a2640;
+  --texto-suave: #5a6a85;
+  --rojo:        #dc2626;
+  --rojo-claro:  #fee2e2;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--fondo);
+  color: var(--texto);
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { font-family: var(--font-display); }
+
+.card {
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: 1rem;
+  padding: 1.5rem;
+}
+
+.btn-primary {
+  background: var(--azul);
+  color: white;
+  border: none;
+  border-radius: 0.625rem;
+  padding: 0.625rem 1.25rem;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.btn-primary:hover  { background: var(--azul-oscuro); }
+.btn-primary:active { transform: scale(0.97); }
+
+.btn-dorado {
+  background: var(--dorado);
+  color: white;
+  border: none;
+  border-radius: 0.625rem;
+  padding: 0.625rem 1.25rem;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.btn-dorado:hover  { background: var(--dorado-oscuro); }
+.btn-dorado:active { transform: scale(0.97); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--texto-suave);
+  border: 1px solid var(--borde);
+  border-radius: 0.625rem;
+  padding: 0.625rem 1.25rem;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.btn-ghost:hover { border-color: var(--azul); color: var(--azul); }
+
+input, select, textarea {
+  font-family: var(--font-body);
+  border: 1px solid var(--borde);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  width: 100%;
+  background: white;
+  color: var(--texto);
+  transition: border-color 0.15s;
+  outline: none;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--azul);
+  box-shadow: 0 0 0 3px rgba(26, 58, 107, 0.1);
+}
+
+label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.badge-azul {
+  background: var(--azul-claro);
+  color: var(--azul-oscuro);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+}
+.badge-dorado {
+  background: var(--dorado-claro);
+  color: var(--dorado-oscuro);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+}
+.badge-verde {
+  background: #dcfce7;
+  color: #14532d;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+}
+.badge-rojo {
+  background: var(--rojo-claro);
+  color: var(--rojo);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+}
+.badge-gris {
+  background: #f1f5f9;
+  color: var(--texto-suave);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+}
