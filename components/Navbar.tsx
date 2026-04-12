@@ -56,9 +56,6 @@ export default function Navbar({ rol }: NavbarProps) {
         {rol && (
           <>
             <Link href={panelHref} style={btnNavStyle}>Mi panel</Link>
-            {rol === 'presidente' && (
-              <Link href="/secretaria" style={btnNavStyle}>Secretaria</Link>
-            )}
             <span className={badgeClass}>{rolLabel}</span>
             <button onClick={logout} style={btnNavStyle}>Salir</button>
           </>
@@ -106,9 +103,6 @@ export default function Navbar({ rol }: NavbarProps) {
             <>
               {rolLabel && <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.8rem' }}>Sesión: {rolLabel}</span>}
               <Link href={panelHref} onClick={() => setMenuAbierto(false)} style={btnMenuMovil}>Mi panel</Link>
-              {rol === 'presidente' && (
-                <Link href="/secretaria" onClick={() => setMenuAbierto(false)} style={btnMenuMovil}>Panel secretaria</Link>
-              )}
               <button onClick={logout} style={{ ...btnMenuMovil, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)' }}>
                 Cerrar sesión
               </button>

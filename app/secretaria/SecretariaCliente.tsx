@@ -68,42 +68,79 @@ export default function SecretariaCliente({ reuniones, decisiones, avisos, proxi
 /* ─── RESUMEN ─────────────────────────────────────────────── */
 function VistaResumen({ reuniones, decisiones, proximaReunion }: { reuniones: Reunion[]; decisiones: Decision[]; proximaReunion: string }) {
   const router = useRouter()
-  const [proxima, setProxima] = useState(proximaReunion)
+  const [nuevaProxima, setNuevaProxima] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [ok, setOk] = useState(false)
+  const [borrando, setBorrando] = useState(false)
   const ultimaReunion = reuniones[0]
 
-  async function guardarProxima() {
+  async function publicar() {
+    if (!nuevaProxima.trim()) return
     setGuardando(true)
     await fetch('/api/proxima-reunion', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ valor: proxima }),
+      body: JSON.stringify({ valor: nuevaProxima.trim() }),
     })
     setGuardando(false)
+    setNuevaProxima('')
     setOk(true)
     router.refresh()
     setTimeout(() => setOk(false), 3000)
+  }
+
+  async function borrarProxima() {
+    if (!confirm('¿Quitar la próxima reunión del panel público?')) return
+    setBorrando(true)
+    await fetch('/api/proxima-reunion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ valor: '' }),
+    })
+    setBorrando(false)
+    router.refresh()
   }
 
   return (
     <div style={{ display: 'grid', gap: '1.5rem' }}>
       {/* Próxima reunión */}
       <div className="card" style={{ borderLeft: '4px solid var(--dorado)' }}>
-        <h2 style={{ margin: '0 0 0.75rem', fontSize: '1rem', color: 'var(--azul)' }}>📅 Próxima reunión</h2>
+        <h2 style={{ margin: '0 0 0.5rem', fontSize: '1rem', color: 'var(--azul)' }}>📅 Próxima reunión</h2>
         <p style={{ margin: '0 0 0.75rem', fontSize: '0.85rem', color: 'var(--texto-suave)' }}>
           Este texto aparece visible para todos los apoderados en la página principal.
         </p>
+
+        {/* Reunión publicada actualmente */}
+        {proximaReunion && (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            gap: '0.75rem', flexWrap: 'wrap',
+            background: 'var(--dorado-claro)', border: '1px solid var(--dorado)',
+            borderRadius: '0.5rem', padding: '0.6rem 0.9rem', marginBottom: '0.75rem',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--dorado-oscuro)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Publicada:</span>
+              <span style={{ fontSize: '0.875rem', color: 'var(--texto)' }}>{proximaReunion}</span>
+            </div>
+            <button onClick={borrarProxima} disabled={borrando} className="btn-ghost"
+              style={{ padding: '0.25rem 0.6rem', fontSize: '0.78rem', color: 'var(--rojo)', borderColor: 'var(--rojo)', flexShrink: 0 }}>
+              {borrando ? '...' : '✕ Quitar'}
+            </button>
+          </div>
+        )}
+
+        {/* Campo para publicar nueva */}
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <input
             type="text"
-            value={proxima}
-            onChange={e => setProxima(e.target.value)}
+            value={nuevaProxima}
+            onChange={e => setNuevaProxima(e.target.value)}
             placeholder="Ej: Jueves 15 de Mayo 2026 a las 19:00 hrs — Sala de clases"
             style={{ flex: 1, minWidth: '200px' }}
+            onKeyDown={e => e.key === 'Enter' && publicar()}
           />
-          <button onClick={guardarProxima} className="btn-primary" disabled={guardando}>
-            {guardando ? 'Guardando...' : 'Publicar'}
+          <button onClick={publicar} className="btn-primary" disabled={guardando || !nuevaProxima.trim()}>
+            {guardando ? 'Publicando...' : 'Publicar'}
           </button>
           {ok && <span style={{ color: '#16a34a', fontSize: '0.85rem', fontWeight: 600 }}>✓ Publicado</span>}
         </div>
@@ -113,7 +150,7 @@ function VistaResumen({ reuniones, decisiones, proximaReunion }: { reuniones: Re
       {ultimaReunion && (
         <div className="card">
           <h2 style={{ margin: '0 0 1rem', fontSize: '1rem', color: 'var(--azul)' }}>
-            🗓 Última reunión — {formatFecha(ultimaReunion.fecha)}
+            🗓 Última reunión — {formatFecha(ultimaReunion.fecha)}{ultimaReunion.hora ? ` · ${ultimaReunion.hora} hrs` : ''}
           </h2>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
             <span className="badge-azul">{ultimaReunion.tipo}</span>
@@ -157,8 +194,8 @@ function VistaReuniones({ reuniones }: { reuniones: Reunion[] }) {
   const [mostrando, setMostrando] = useState<'lista' | 'nueva'>('lista')
   const router = useRouter()
 
-  async function eliminarReunion(id: string) {
-    if (!confirm('¿Eliminar esta reunión y su acta?')) return
+  async function eliminarReunion(id: string, fecha: string) {
+    if (!confirm(`¿Eliminar la reunión del ${formatFecha(fecha)} y toda su información? Esta acción no se puede deshacer.`)) return
     await fetch(`/api/reuniones/${id}`, { method: 'DELETE' })
     router.refresh()
   }
@@ -181,45 +218,108 @@ function VistaReuniones({ reuniones }: { reuniones: Reunion[] }) {
           ? <p style={{ color: 'var(--texto-suave)', fontSize: '0.875rem', textAlign: 'center', padding: '2rem 0' }}>Sin reuniones registradas aún</p>
           : <div style={{ display: 'grid', gap: '1rem' }}>
               {reuniones.map(r => (
-                <div key={r.id} className="card" style={{ padding: '1.25rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                    <div>
-                      <p style={{ margin: '0 0 0.3rem', fontWeight: 700, fontSize: '1rem', color: 'var(--azul)' }}>
-                        {formatFecha(r.fecha)}
-                      </p>
-                      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                        <span className="badge-azul">{r.tipo}</span>
-                        <span className="badge-gris">📍 {r.lugar}</span>
-                        <span className="badge-gris">👥 {r.asistentes_count} asistentes</span>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.4rem' }}>
-                      <BotonWhatsapp reunion={r} small />
-                      <button onClick={() => eliminarReunion(r.id)} className="btn-ghost" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', color: 'var(--rojo)' }}>
-                        🗑
-                      </button>
-                    </div>
-                  </div>
-                  {r.resumen && <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--texto)', lineHeight: 1.6 }}>{r.resumen}</p>}
-                  {r.actas?.[0] && (
-                    <div style={{ background: 'var(--fondo)', borderRadius: '0.5rem', padding: '0.75rem 1rem', marginBottom: '0.75rem' }}>
-                      <p style={{ margin: '0 0 0.4rem', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--texto-suave)' }}>Acta</p>
-                      <p style={{ margin: 0, fontSize: '0.85rem', whiteSpace: 'pre-line', color: 'var(--texto)', lineHeight: 1.6 }}>{r.actas[0].contenido}</p>
-                    </div>
-                  )}
-                  {r.decisiones && r.decisiones.length > 0 && (
-                    <div>
-                      <p style={{ margin: '0 0 0.4rem', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--texto-suave)' }}>
-                        Decisiones ({r.decisiones.length})
-                      </p>
-                      <div style={{ display: 'grid', gap: '0.3rem' }}>
-                        {r.decisiones.map(d => <FilaDecision key={d.id} decision={d} compact />)}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <TarjetaReunion key={r.id} reunion={r} onEliminar={() => eliminarReunion(r.id, r.fecha)} />
               ))}
             </div>
+      )}
+    </div>
+  )
+}
+
+function TarjetaReunion({ reunion: r, onEliminar }: { reunion: Reunion; onEliminar: () => void }) {
+  const router = useRouter()
+  const [editandoActa, setEditandoActa] = useState(false)
+  const [textoActa, setTextoActa] = useState(r.actas?.[0]?.contenido ?? '')
+  const [guardandoActa, setGuardandoActa] = useState(false)
+
+  async function guardarActa() {
+    setGuardandoActa(true)
+    if (r.actas?.[0]) {
+      await fetch(`/api/actas/${r.actas[0].id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contenido: textoActa }),
+      })
+    }
+    setGuardandoActa(false)
+    setEditandoActa(false)
+    router.refresh()
+  }
+
+  return (
+    <div className="card" style={{ padding: '1.25rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+        <div>
+          <p style={{ margin: '0 0 0.3rem', fontWeight: 700, fontSize: '1rem', color: 'var(--azul)' }}>
+            {formatFecha(r.fecha)}{r.hora ? ` · ${r.hora} hrs` : ''}
+          </p>
+          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+            <span className="badge-azul">{r.tipo}</span>
+            <span className="badge-gris">📍 {r.lugar}</span>
+            <span className="badge-gris">👥 {r.asistentes_count} asistentes</span>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '0.4rem' }}>
+          <BotonWhatsapp reunion={r} small />
+          <button onClick={onEliminar} className="btn-ghost"
+            style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', color: 'var(--rojo)', borderColor: 'var(--rojo)' }}>
+            🗑 Eliminar
+          </button>
+        </div>
+      </div>
+
+      {r.resumen && (
+        <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--texto)', lineHeight: 1.6 }}>{r.resumen}</p>
+      )}
+
+      {r.actas?.[0] && (
+        <div style={{ background: 'var(--fondo)', borderRadius: '0.5rem', padding: '0.75rem 1rem', marginBottom: '0.75rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+            <p style={{ margin: 0, fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--texto-suave)' }}>Acta</p>
+            {!editandoActa && (
+              <button onClick={() => setEditandoActa(true)} className="btn-ghost"
+                style={{ padding: '0.15rem 0.5rem', fontSize: '0.75rem' }}>
+                ✎ Editar
+              </button>
+            )}
+          </div>
+          {editandoActa ? (
+            <div>
+              <textarea
+                value={textoActa}
+                onChange={e => setTextoActa(e.target.value)}
+                rows={6}
+                style={{ resize: 'vertical', fontSize: '0.85rem', marginBottom: '0.5rem' }}
+                autoFocus
+              />
+              <div style={{ display: 'flex', gap: '0.4rem' }}>
+                <button onClick={guardarActa} className="btn-primary" disabled={guardandoActa}
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem' }}>
+                  {guardandoActa ? 'Guardando...' : '✓ Guardar'}
+                </button>
+                <button onClick={() => { setEditandoActa(false); setTextoActa(r.actas?.[0]?.contenido ?? '') }}
+                  className="btn-ghost" style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem' }}>
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p style={{ margin: 0, fontSize: '0.85rem', whiteSpace: 'pre-line', color: 'var(--texto)', lineHeight: 1.6 }}>
+              {r.actas[0].contenido}
+            </p>
+          )}
+        </div>
+      )}
+
+      {r.decisiones && r.decisiones.length > 0 && (
+        <div>
+          <p style={{ margin: '0 0 0.4rem', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--texto-suave)' }}>
+            Decisiones ({r.decisiones.length})
+          </p>
+          <div style={{ display: 'grid', gap: '0.3rem' }}>
+            {r.decisiones.map(d => <FilaDecision key={d.id} decision={d} compact />)}
+          </div>
+        </div>
       )}
     </div>
   )
@@ -259,7 +359,8 @@ function FormNuevaReunion({ onGuardado }: { onGuardado: () => void }) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        fecha, tipo, lugar,
+        fecha, hora,
+        tipo, lugar,
         asistentes_count: parseInt(asistentes) || 0,
         resumen: resumen.trim(),
         acta,
@@ -268,6 +369,10 @@ function FormNuevaReunion({ onGuardado }: { onGuardado: () => void }) {
     })
     setLoading(false)
     if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Error al guardar'); return }
+    setResumen('')
+    setActa('')
+    setAsistentes('')
+    setDecisiones([{ descripcion: '', responsable: '', fecha_limite: '' }])
     onGuardado()
   }
 
@@ -291,8 +396,8 @@ function FormNuevaReunion({ onGuardado }: { onGuardado: () => void }) {
           <input type="text" value={lugar} onChange={e => setLugar(e.target.value)} placeholder="Sala de clases" />
         </div>
         <div>
-          <label>Hora</label>
-          <input type="time" value={hora} onChange={e => setHora(e.target.value)} />
+          <label>Hora (formato 24h)</label>
+          <input type="text" value={hora} onChange={e => setHora(e.target.value)} placeholder="Ej: 16:00" maxLength={5} />
         </div>
         <div>
           <label>N° asistentes</label>

@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { formatCLP, CATEGORIAS, type Movimiento, type Categoria } from '@/lib/types'
 
 interface Props {
@@ -9,7 +10,11 @@ interface Props {
 const POR_PAGINA = 10
 
 export default function TablaMovimientos({ movimientos }: Props) {
-  const [filtro, setFiltro] = useState<Categoria | 'Todos'>('Todos')
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const filtroInicial = (searchParams.get('cat') as Categoria | 'Todos') ?? 'Todos'
+  const [filtro, setFiltro] = useState<Categoria | 'Todos'>(filtroInicial)
   const [pagina, setPagina] = useState(1)
 
   const filtrados = filtro === 'Todos' ? movimientos : movimientos.filter(m => m.categoria === filtro)
@@ -19,6 +24,10 @@ export default function TablaMovimientos({ movimientos }: Props) {
   function cambiarFiltro(cat: Categoria | 'Todos') {
     setFiltro(cat)
     setPagina(1)
+    const params = new URLSearchParams(searchParams.toString())
+    if (cat === 'Todos') params.delete('cat')
+    else params.set('cat', cat)
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
   }
 
   return (
@@ -37,8 +46,8 @@ export default function TablaMovimientos({ movimientos }: Props) {
               fontWeight: 500,
               cursor: 'pointer',
               transition: 'all 0.15s',
-              borderColor: filtro === cat ? 'var(--verde)' : 'var(--borde)',
-              background: filtro === cat ? 'var(--verde)' : 'white',
+              borderColor: filtro === cat ? 'var(--azul)' : 'var(--borde)',
+              background: filtro === cat ? 'var(--azul)' : 'white',
               color: filtro === cat ? 'white' : 'var(--texto-suave)',
             }}
           >
@@ -82,24 +91,15 @@ export default function TablaMovimientos({ movimientos }: Props) {
                     {new Date(m.fecha + 'T12:00:00').toLocaleDateString('es-CL', { day: '2-digit', month: 'short' })}
                   </td>
                   <td style={{ padding: '0.6rem 0.75rem' }}>
-                    <span className={
-                      m.categoria === 'Cuotas' ? 'badge-verde' :
-                      m.categoria === 'Paseo' ? 'badge-gris' :
-                      m.categoria === 'Celebración' ? 'badge-gris' :
-                      'badge-gris'
-                    }>
-                      {m.categoria}
-                    </span>
+                    <span className={m.categoria === 'Cuotas' ? 'badge-verde' : 'badge-gris'}>{m.categoria}</span>
                   </td>
-                  <td style={{ padding: '0.6rem 0.75rem', color: 'var(--texto)' }}>
-                    {m.descripcion}
-                  </td>
+                  <td style={{ padding: '0.6rem 0.75rem', color: 'var(--texto)' }}>{m.descripcion}</td>
                   <td style={{
                     padding: '0.6rem 0.75rem',
                     textAlign: 'right',
                     fontWeight: 600,
                     whiteSpace: 'nowrap',
-                    color: m.monto >= 0 ? 'var(--verde)' : 'var(--rojo)',
+                    color: m.monto >= 0 ? '#16a34a' : 'var(--rojo)',
                   }}>
                     {m.monto >= 0 ? '+' : ''}{formatCLP(m.monto)}
                   </td>
@@ -112,25 +112,9 @@ export default function TablaMovimientos({ movimientos }: Props) {
 
       {totalPaginas > 1 && (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginTop: '1rem' }}>
-          <button
-            onClick={() => setPagina(p => Math.max(1, p - 1))}
-            disabled={pagina === 1}
-            className="btn-ghost"
-            style={{ padding: '0.3rem 0.75rem', fontSize: '0.85rem' }}
-          >
-            ←
-          </button>
-          <span style={{ fontSize: '0.85rem', color: 'var(--texto-suave)' }}>
-            {pagina} / {totalPaginas}
-          </span>
-          <button
-            onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))}
-            disabled={pagina === totalPaginas}
-            className="btn-ghost"
-            style={{ padding: '0.3rem 0.75rem', fontSize: '0.85rem' }}
-          >
-            →
-          </button>
+          <button onClick={() => setPagina(p => Math.max(1, p - 1))} disabled={pagina === 1} className="btn-ghost" style={{ padding: '0.3rem 0.75rem', fontSize: '0.85rem' }}>←</button>
+          <span style={{ fontSize: '0.85rem', color: 'var(--texto-suave)' }}>{pagina} / {totalPaginas}</span>
+          <button onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))} disabled={pagina === totalPaginas} className="btn-ghost" style={{ padding: '0.3rem 0.75rem', fontSize: '0.85rem' }}>→</button>
         </div>
       )}
     </div>

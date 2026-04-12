@@ -43,6 +43,6 @@ export async function requiereRol(rol: Rol): Promise<boolean> {
   const sesion = await obtenerSesion()
   if (!sesion) return false
   if (rol === 'presidente') return ['presidente', 'tesorero'].includes(sesion)
-  if (rol === 'secretaria') return ['secretaria', 'tesorero', 'presidente'].includes(sesion)
+  if (rol === 'secretaria') return ['secretaria', 'tesorero'].includes(sesion)
   return sesion === 'tesorero'
 }

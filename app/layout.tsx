@@ -3,7 +3,11 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'Tesorería 1°B · 2026',
-  description: 'Gestión de fondos del curso escolar',
+  description: 'Gestión de fondos del curso — Esc. Hermano Leovigildo Kley',
+  icons: {
+    icon: '/favicon.png',
+    apple: '/favicon.png',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

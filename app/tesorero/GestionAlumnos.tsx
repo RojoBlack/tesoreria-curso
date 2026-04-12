@@ -59,6 +59,12 @@ export default function GestionAlumnos({ alumnos }: Props) {
     router.refresh()
   }
 
+  async function eliminarAlumno(alumno: Alumno) {
+    if (!confirm(`¿Eliminar permanentemente a ${alumno.nombre}? Esto también eliminará sus movimientos asociados. Esta acción no se puede deshacer.`)) return
+    await fetch(`/api/alumnos/${alumno.id}`, { method: 'DELETE' })
+    router.refresh()
+  }
+
   async function guardarCodigo(id: string) {
     if (!nuevoCodigo.trim()) return
     await fetch(`/api/alumnos/${id}`, {
@@ -168,13 +174,18 @@ export default function GestionAlumnos({ alumnos }: Props) {
                   </span>
                 </td>
                 <td style={{ padding: '0.6rem 0.75rem' }}>
-                  <button
-                    onClick={() => toggleActivo(a)}
-                    className="btn-ghost"
-                    style={{ padding: '0.25rem 0.6rem', fontSize: '0.78rem' }}
-                  >
-                    {a.activo ? 'Desactivar' : 'Activar'}
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.3rem' }}>
+                    <button onClick={() => toggleActivo(a)} className="btn-ghost"
+                      style={{ padding: '0.25rem 0.6rem', fontSize: '0.78rem' }}>
+                      {a.activo ? 'Desactivar' : 'Activar'}
+                    </button>
+                    {!a.activo && (
+                      <button onClick={() => eliminarAlumno(a)} className="btn-ghost"
+                        style={{ padding: '0.25rem 0.6rem', fontSize: '0.78rem', color: 'var(--rojo)', borderColor: 'var(--rojo)' }}>
+                        Eliminar
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
