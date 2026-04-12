@@ -1,6 +1,5 @@
 'use client'
 import { useState } from 'react'
-import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { formatCLP, CATEGORIAS, type Movimiento, type Categoria } from '@/lib/types'
 
 interface Props {
@@ -10,11 +9,7 @@ interface Props {
 const POR_PAGINA = 10
 
 export default function TablaMovimientos({ movimientos }: Props) {
-  const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const filtroInicial = (searchParams.get('cat') as Categoria | 'Todos') ?? 'Todos'
-  const [filtro, setFiltro] = useState<Categoria | 'Todos'>(filtroInicial)
+  const [filtro, setFiltro] = useState<Categoria | 'Todos'>('Todos')
   const [pagina, setPagina] = useState(1)
 
   const filtrados = filtro === 'Todos' ? movimientos : movimientos.filter(m => m.categoria === filtro)
@@ -24,10 +19,6 @@ export default function TablaMovimientos({ movimientos }: Props) {
   function cambiarFiltro(cat: Categoria | 'Todos') {
     setFiltro(cat)
     setPagina(1)
-    const params = new URLSearchParams(searchParams.toString())
-    if (cat === 'Todos') params.delete('cat')
-    else params.set('cat', cat)
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
   }
 
   return (
