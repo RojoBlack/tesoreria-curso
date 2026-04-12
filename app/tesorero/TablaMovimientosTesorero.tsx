@@ -17,21 +17,42 @@ export default function TablaMovimientosTesorero({ movimientos }: Props) {
   const [busqueda, setBusqueda] = useState('')
   const [editando, setEditando] = useState<Movimiento | null>(null)
 
+  // Agrupar movimientos con misma descripción + alumno + fecha (ej: múltiples cuotas)
+  function agrupar(lista: Movimiento[]) {
+    const grupos = new Map<string, Movimiento & { _ids: string[]; _montoTotal: number }>()
+    for (const m of lista) {
+      const clave = `${m.fecha}|${m.descripcion}|${m.alumno_id ?? ''}|${m.categoria}`
+      if (grupos.has(clave)) {
+        const g = grupos.get(clave)!
+        g._ids.push(m.id)
+        g._montoTotal += m.monto
+      } else {
+        grupos.set(clave, { ...m, _ids: [m.id], _montoTotal: m.monto })
+      }
+    }
+    return [...grupos.values()]
+  }
+
   const porCategoria = filtro === 'Todos' ? movimientos : movimientos.filter(m => m.categoria === filtro)
-  const filtrados = busqueda.trim()
-    ? porCategoria.filter(m =>
-        m.descripcion.toLowerCase().includes(busqueda.toLowerCase()) ||
-        m.alumnos?.nombre?.toLowerCase().includes(busqueda.toLowerCase())
-      )
-    : porCategoria
+  const filtrados = agrupar(
+    busqueda.trim()
+      ? porCategoria.filter(m =>
+          m.descripcion.toLowerCase().includes(busqueda.toLowerCase()) ||
+          m.alumnos?.nombre?.toLowerCase().includes(busqueda.toLowerCase())
+        )
+      : porCategoria
+  )
 
   const totalPaginas = Math.max(1, Math.ceil(filtrados.length / POR_PAGINA))
   const paginados = filtrados.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)
 
-  async function eliminar(id: string) {
-    if (!confirm('¿Eliminar este movimiento? Esta acción no se puede deshacer.')) return
-    setEliminando(id)
-    await fetch(`/api/movimientos/${id}`, { method: 'DELETE' })
+  async function eliminar(ids: string[], descripcion: string) {
+    const msg = ids.length > 1
+      ? `¿Eliminar ${ids.length} registros de "${descripcion}"? Esta acción no se puede deshacer.`
+      : '¿Eliminar este movimiento? Esta acción no se puede deshacer.'
+    if (!confirm(msg)) return
+    setEliminando(ids[0])
+    await Promise.all(ids.map(id => fetch(`/api/movimientos/${id}`, { method: 'DELETE' })))
     setEliminando(null)
     router.refresh()
   }
@@ -84,35 +105,43 @@ export default function TablaMovimientosTesorero({ movimientos }: Props) {
               </tr>
             </thead>
             <tbody>
-              {paginados.map((m, i) => (
-                <tr key={m.id} style={{ borderBottom: '1px solid var(--borde)', background: i % 2 === 0 ? 'white' : 'var(--fondo)' }}>
+              {paginados.map((m, i) => {
+                const mg = m as Movimiento & { _ids: string[]; _montoTotal: number }
+                const agrupado = mg._ids.length > 1
+                return (
+                <tr key={mg._ids[0]} style={{ borderBottom: '1px solid var(--borde)', background: i % 2 === 0 ? 'white' : 'var(--fondo)' }}>
                   <td style={{ padding: '0.6rem 0.75rem', whiteSpace: 'nowrap', color: 'var(--texto-suave)' }}>
                     {new Date(m.fecha + 'T12:00:00').toLocaleDateString('es-CL', { day: '2-digit', month: 'short' })}
                   </td>
                   <td style={{ padding: '0.6rem 0.75rem' }}>
                     <span className="badge-gris">{m.categoria}</span>
                   </td>
-                  <td style={{ padding: '0.6rem 0.75rem' }}>{m.descripcion}</td>
+                  <td style={{ padding: '0.6rem 0.75rem' }}>
+                    {m.descripcion}
+                  </td>
                   <td style={{ padding: '0.6rem 0.75rem', color: 'var(--texto-suave)', fontSize: '0.82rem' }}>
                     {m.alumnos?.nombre ?? '—'}
                   </td>
-                  <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontWeight: 600, whiteSpace: 'nowrap', color: m.monto >= 0 ? '#16a34a' : 'var(--rojo)' }}>
-                    {m.monto >= 0 ? '+' : ''}{formatCLP(m.monto)}
+                  <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontWeight: 600, whiteSpace: 'nowrap', color: mg._montoTotal >= 0 ? '#16a34a' : 'var(--rojo)' }}>
+                    {mg._montoTotal >= 0 ? '+' : ''}{formatCLP(mg._montoTotal)}
                   </td>
                   <td style={{ padding: '0.6rem 0.75rem' }}>
                     <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
-                      <button onClick={() => setEditando(m)} title="Editar"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--azul)', fontSize: '0.9rem', padding: '0.2rem 0.3rem' }}>
-                        ✎
-                      </button>
-                      <button onClick={() => eliminar(m.id)} disabled={eliminando === m.id} title="Eliminar"
+                      {!agrupado && (
+                        <button onClick={() => setEditando(m)} title="Editar"
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--azul)', fontSize: '0.9rem', padding: '0.2rem 0.3rem' }}>
+                          ✎
+                        </button>
+                      )}
+                      <button onClick={() => eliminar(mg._ids, m.descripcion)} disabled={eliminando === mg._ids[0]} title="Eliminar"
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--texto-suave)', fontSize: '0.9rem', padding: '0.2rem 0.3rem' }}>
-                        {eliminando === m.id ? '...' : '🗑'}
+                        {eliminando === mg._ids[0] ? '...' : '🗑'}
                       </button>
                     </div>
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>

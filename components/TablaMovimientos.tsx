@@ -6,15 +6,31 @@ interface Props {
   movimientos: Movimiento[]
 }
 
+type MovimientoAgrupado = Movimiento & { _montoTotal: number }
+
 const POR_PAGINA = 10
+
+function agrupar(lista: Movimiento[]): MovimientoAgrupado[] {
+  const grupos = new Map<string, MovimientoAgrupado>()
+  for (const m of lista) {
+    const clave = `${m.fecha}|${m.descripcion}|${m.alumno_id ?? ''}|${m.categoria}`
+    if (grupos.has(clave)) {
+      grupos.get(clave)!._montoTotal += m.monto
+    } else {
+      grupos.set(clave, { ...m, _montoTotal: m.monto })
+    }
+  }
+  return [...grupos.values()]
+}
 
 export default function TablaMovimientos({ movimientos }: Props) {
   const [filtro, setFiltro] = useState<Categoria | 'Todos'>('Todos')
   const [pagina, setPagina] = useState(1)
 
-  const filtrados = filtro === 'Todos' ? movimientos : movimientos.filter(m => m.categoria === filtro)
-  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / POR_PAGINA))
-  const paginados = filtrados.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)
+  const porCategoria = filtro === 'Todos' ? movimientos : movimientos.filter(m => m.categoria === filtro)
+  const agrupados = agrupar(porCategoria)
+  const totalPaginas = Math.max(1, Math.ceil(agrupados.length / POR_PAGINA))
+  const paginados = agrupados.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)
 
   function cambiarFiltro(cat: Categoria | 'Todos') {
     setFiltro(cat)
@@ -90,9 +106,9 @@ export default function TablaMovimientos({ movimientos }: Props) {
                     textAlign: 'right',
                     fontWeight: 600,
                     whiteSpace: 'nowrap',
-                    color: m.monto >= 0 ? '#16a34a' : 'var(--rojo)',
+                    color: m._montoTotal >= 0 ? '#16a34a' : 'var(--rojo)',
                   }}>
-                    {m.monto >= 0 ? '+' : ''}{formatCLP(m.monto)}
+                    {m._montoTotal >= 0 ? '+' : ''}{formatCLP(m._montoTotal)}
                   </td>
                 </tr>
               ))}
