@@ -188,21 +188,26 @@ function DetalleAlumnoTesorero({ alumno, mesesPagados, movimientos, cuotaMensual
     if (seleccionados.size === 0) return
     setGuardandoMultiple(true)
     const fecha = new Date().toISOString().split('T')[0]
-    await Promise.all([...seleccionados].map(mesKey => {
-      const mesLabel = MESES_2026.find(m => m.key === mesKey)?.label ?? mesKey
-      return fetch('/api/movimientos', {
+    const mesesOrdenados = [...seleccionados].sort()
+    const labels = mesesOrdenados.map(k => MESES_2026.find(m => m.key === k)?.label ?? k)
+    const descripcion = mesesOrdenados.length === 1
+      ? `Cuota ${labels[0]} 2026 — ${alumno.nombre}`
+      : `Cuotas ${labels.join(', ')} 2026 — ${alumno.nombre}`
+
+    await Promise.all(mesesOrdenados.map(mesKey =>
+      fetch('/api/movimientos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fecha,
           categoria: 'Cuotas',
-          descripcion: `Cuota ${mesLabel} 2026 — ${alumno.nombre}`,
+          descripcion,
           monto: cuotaMensual,
           alumno_id: alumno.id,
           mes_cuota: mesKey,
         }),
       })
-    }))
+    ))
     setSeleccionados(new Set())
     setGuardandoMultiple(false)
     router.refresh()
