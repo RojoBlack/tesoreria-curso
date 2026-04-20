@@ -17,18 +17,16 @@ export default function GestionAlumnos({ alumnos }: Props) {
   const [editandoCodigo, setEditandoCodigo] = useState<string | null>(null)
   const [nuevoCodigo, setNuevoCodigo] = useState('')
 
+  function normalizar(str: string) {
+    return str.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '')
+  }
+
   function generarCodigo(nombreCompleto: string) {
-    const partes = nombreCompleto.trim().split(' ')
-    const apellido = partes.length >= 2 ? partes[partes.length - 1] : partes[0]
-    const base = apellido.slice(0, 3).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    const activos = alumnos.filter(a => a.activo)
-    let candidato = `${base}-26`
-    let n = 2
-    while (activos.some(a => a.codigo_apoderado === candidato)) {
-      candidato = `${base}${n}-26`
-      n++
-    }
-    return candidato
+    const partes = nombreCompleto.trim().split(/\s+/).filter(Boolean)
+    if (partes.length < 2) return normalizar(partes[0] ?? '')
+    const primerNombre = partes[0]
+    const primerApellido = partes[partes.length >= 4 ? partes.length - 2 : partes.length - 1]
+    return normalizar(`${primerNombre}${primerApellido}`)
   }
 
   async function agregarAlumno(e: React.FormEvent) {
@@ -112,8 +110,13 @@ export default function GestionAlumnos({ alumnos }: Props) {
               <input
                 type="text"
                 value={codigo}
-                onChange={e => setCodigo(e.target.value.toUpperCase())}
-                placeholder="REY-26"
+                onChange={e => setCodigo(e.target.value)}
+                onInput={e => {
+                  const input = e.currentTarget
+                  input.value = input.value.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                  setCodigo(input.value)
+                }}
+                placeholder="Ej: SOFIACANDIA"
               />
             </div>
           </div>
@@ -150,8 +153,13 @@ export default function GestionAlumnos({ alumnos }: Props) {
                       <input
                         type="text"
                         value={nuevoCodigo}
-                        onChange={e => setNuevoCodigo(e.target.value.toUpperCase())}
-                        style={{ width: '100px', padding: '0.25rem 0.5rem', fontSize: '0.85rem' }}
+                        onChange={e => setNuevoCodigo(e.target.value)}
+                        onInput={e => {
+                          const input = e.currentTarget
+                          input.value = input.value.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                          setNuevoCodigo(input.value)
+                        }}
+                        style={{ width: '160px', padding: '0.25rem 0.5rem', fontSize: '0.85rem' }}
                         autoFocus
                       />
                       <button onClick={() => guardarCodigo(a.id)} className="btn-primary" style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem' }}>✓</button>

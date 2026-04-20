@@ -58,7 +58,12 @@ export default function ConsultaCliente() {
               type="text"
               value={codigo}
               onChange={e => setCodigo(e.target.value)}
-              placeholder="Ej: GON-26"
+              onInput={e => {
+                const input = e.currentTarget
+                input.value = input.value.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                setCodigo(input.value)
+              }}
+              placeholder="Ej: ELAHALARCON"
               autoFocus
               style={{ textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600 }}
             />
