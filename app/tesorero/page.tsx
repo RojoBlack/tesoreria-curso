@@ -2,19 +2,21 @@ import { requiereRol, obtenerSesion } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import { supabaseAdmin } from '@/lib/supabase'
-import { formatCLP, MESES_2026, type Alumno, type Movimiento, type Config } from '@/lib/types'
+import { formatCLP, MESES_2026, type Alumno, type Movimiento, type Config, type Donacion } from '@/lib/types'
 import FormMovimiento from './FormMovimiento'
 import GestionAlumnos from './GestionAlumnos'
 import TablaAlumnosTesorero from './TablaAlumnosTesorero'
 import TablaMovimientosTesorero from './TablaMovimientosTesorero'
+import GestionDonaciones from './GestionDonaciones'
 
 export const revalidate = 0
 
 async function getDatos() {
-  const [{ data: alumnos }, { data: movimientos }, { data: configRows }] = await Promise.all([
+  const [{ data: alumnos }, { data: movimientos }, { data: configRows }, { data: donaciones }] = await Promise.all([
     supabaseAdmin.from('alumnos').select('*').order('nombre'),
     supabaseAdmin.from('movimientos').select('*, alumnos(nombre)').order('fecha', { ascending: false }),
     supabaseAdmin.from('config').select('*'),
+    supabaseAdmin.from('donaciones').select('*, alumnos(nombre)').order('convivencia').order('created_at', { ascending: true }),
   ])
   const config: Config = {}
   for (const row of configRows ?? []) config[row.clave] = row.valor
@@ -22,6 +24,7 @@ async function getDatos() {
     alumnos: (alumnos ?? []) as Alumno[],
     movimientos: (movimientos ?? []) as Movimiento[],
     config,
+    donaciones: (donaciones ?? []) as Donacion[],
   }
 }
 
@@ -29,7 +32,7 @@ export default async function TesoreroPage() {
   const ok = await requiereRol('tesorero')
   if (!ok) redirect('/login')
   const rol = await obtenerSesion()
-  const { alumnos, movimientos, config } = await getDatos()
+  const { alumnos, movimientos, config, donaciones } = await getDatos()
 
   const alumnosActivos = alumnos.filter(a => a.activo)
   const cuotaMensual = parseInt(config.cuota_mensual ?? '2000', 10)
@@ -89,6 +92,14 @@ export default async function TesoreroPage() {
         <div className="card" style={{ marginBottom: '1.5rem' }}>
           <h2 style={{ margin: '0 0 1rem', fontSize: '1.1rem', color: 'var(--azul)' }}>Todos los movimientos</h2>
           <TablaMovimientosTesorero movimientos={movimientos} />
+        </div>
+
+        <div className="card" style={{ marginBottom: '1.5rem' }}>
+          <h2 style={{ margin: '0 0 0.25rem', fontSize: '1.1rem', color: 'var(--azul)' }}>🎉 Donaciones para convivencias</h2>
+          <p style={{ margin: '0 0 1rem', fontSize: '0.82rem', color: 'var(--texto-suave)' }}>
+            Registra qué trajo cada apoderado para las actividades del curso.
+          </p>
+          <GestionDonaciones alumnos={alumnosActivos} donaciones={donaciones} />
         </div>
 
         <div className="card">

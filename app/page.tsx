@@ -1,7 +1,7 @@
 import { obtenerSesion } from '@/lib/auth'
 import Navbar from '@/components/Navbar'
 import { supabase } from '@/lib/supabase'
-import { formatCLP, type Movimiento, type Config } from '@/lib/types'
+import { formatCLP, type Movimiento, type Config, type Donacion } from '@/lib/types'
 import type { Reunion, Aviso } from '@/lib/types-secretaria'
 import GraficoMovimientos from '@/components/GraficoMovimientos'
 import TablaMovimientos from '@/components/TablaMovimientos'
@@ -16,11 +16,13 @@ async function getDatos() {
     { data: configRows },
     { data: reuniones },
     { data: avisos },
+    { data: donaciones },
   ] = await Promise.all([
     supabase.from('movimientos').select('*, alumnos(nombre)').order('fecha', { ascending: false }),
     supabase.from('config').select('*'),
     supabase.from('reuniones').select('*, actas(*), decisiones(*)').order('fecha', { ascending: false }).limit(1),
     supabase.from('avisos').select('*').order('destacado', { ascending: false }).order('created_at', { ascending: false }),
+    supabase.from('donaciones').select('*, alumnos(nombre)').order('convivencia').order('created_at', { ascending: true }),
   ])
 
   const config: Config = {}
@@ -31,17 +33,25 @@ async function getDatos() {
     config,
     ultimaReunion: ((reuniones ?? []) as Reunion[])[0] ?? null,
     avisos: (avisos ?? []) as Aviso[],
+    donaciones: (donaciones ?? []) as Donacion[],
   }
 }
 
 export default async function Home() {
   const rol = await obtenerSesion()
-  const { movimientos, config, ultimaReunion, avisos } = await getDatos()
+  const { movimientos, config, ultimaReunion, avisos, donaciones } = await getDatos()
 
   const totalIngresos = movimientos.filter(m => m.monto > 0).reduce((s, m) => s + m.monto, 0)
   const totalGastos = movimientos.filter(m => m.monto < 0).reduce((s, m) => s + m.monto, 0)
   const saldo = totalIngresos + totalGastos
   const proximaReunion = config.proxima_reunion ?? ''
+
+  // Agrupar donaciones por convivencia
+  const donacionesPorConvivencia = donaciones.reduce((acc, d) => {
+    if (!acc[d.convivencia]) acc[d.convivencia] = []
+    acc[d.convivencia].push(d)
+    return acc
+  }, {} as Record<string, Donacion[]>)
 
   return (
     <>
@@ -195,6 +205,71 @@ export default async function Home() {
           <h2 style={{ margin: '0 0 1rem', fontSize: '1.1rem', color: 'var(--azul)' }}>Registro de movimientos</h2>
           <TablaMovimientos movimientos={movimientos} />
         </div>
+
+        {/* Donaciones convivencias */}
+        {Object.keys(donacionesPorConvivencia).length > 0 && (
+          <div className="card" style={{ marginBottom: '1.5rem' }}>
+            <h2 style={{ margin: '0 0 0.25rem', fontSize: '1.1rem', color: 'var(--azul)' }}>
+              🎉 Donaciones para convivencias
+            </h2>
+            <p style={{ margin: '0 0 1.25rem', fontSize: '0.82rem', color: 'var(--texto-suave)' }}>
+              Aportes voluntarios de los apoderados para las actividades del curso.
+            </p>
+            <div style={{ display: 'grid', gap: '1.25rem' }}>
+              {Object.entries(donacionesPorConvivencia).map(([convivencia, lista]) => (
+                <div key={convivencia}>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '0.6rem',
+                    marginBottom: '0.75rem',
+                  }}>
+                    <span style={{
+                      display: 'inline-block',
+                      background: 'var(--dorado)',
+                      color: 'white',
+                      fontWeight: 700,
+                      fontSize: '0.78rem',
+                      padding: '0.2rem 0.75rem',
+                      borderRadius: '999px',
+                      letterSpacing: '0.03em',
+                    }}>
+                      {convivencia}
+                    </span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--texto-suave)' }}>
+                      {lista.length} {lista.length === 1 ? 'aporte' : 'aportes'}
+                    </span>
+                  </div>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                    gap: '0.5rem',
+                  }}>
+                    {lista.map(d => (
+                      <div key={d.id} style={{
+                        background: 'var(--fondo)',
+                        border: '1px solid var(--borde)',
+                        borderRadius: '0.6rem',
+                        padding: '0.65rem 0.9rem',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '0.6rem',
+                      }}>
+                        <span style={{ fontSize: '1.1rem', flexShrink: 0, marginTop: '0.05rem' }}>🎁</span>
+                        <div>
+                          <p style={{ margin: '0 0 0.1rem', fontWeight: 600, fontSize: '0.85rem', color: 'var(--texto)' }}>
+                            {d.alumnos?.nombre ?? '—'}
+                          </p>
+                          <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--texto-suave)' }}>
+                            {d.descripcion}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Info pago */}
         <InfoPago config={config} />

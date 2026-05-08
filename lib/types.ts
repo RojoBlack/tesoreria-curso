@@ -39,6 +39,16 @@ export interface Config {
   [clave: string]: string
 }
 
+export interface Donacion {
+  id: string
+  convivencia: string
+  alumno_id: string
+  descripcion: string
+  fecha: string
+  created_at: string
+  alumnos?: { nombre: string } | null
+}
+
 export function formatCLP(monto: number) {
   return new Intl.NumberFormat('es-CL', {
     style: 'currency',
