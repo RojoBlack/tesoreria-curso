@@ -35,20 +35,31 @@ export async function GET(req: NextRequest) {
     .gt('monto', 0)
 
   const mesesPagados = new Map<string, string>()
+  let saldoAFavor = 0
+
   for (const pago of pagos ?? []) {
-    if (pago.mes_cuota) mesesPagados.set(pago.mes_cuota, pago.fecha)
+    if (pago.mes_cuota) {
+      mesesPagados.set(pago.mes_cuota, pago.fecha)
+    } else {
+      saldoAFavor += pago.monto
+    }
   }
+
+  // Determinar el mes parcial: primer mes no pagado donde aplica el saldo a favor
+  const primerMesSinPagar = MESES_2026.find(m => !mesesPagados.has(m.key))
+  const mesParcial = saldoAFavor > 0 && primerMesSinPagar ? primerMesSinPagar.key : null
 
   const cuotas = MESES_2026.map(({ key, label }) => ({
     mes: key,
     label,
     pagado: mesesPagados.has(key),
     fecha: mesesPagados.get(key),
+    parcial: key === mesParcial ? saldoAFavor : 0,
   }))
 
   const mesesPagadosCount = mesesPagados.size
-  const totalPagado = mesesPagadosCount * cuotaMensual
-  const totalPendiente = (MESES_2026.length - mesesPagadosCount) * cuotaMensual
+  const totalPagado = mesesPagadosCount * cuotaMensual + saldoAFavor
+  const totalPendiente = Math.max(0, (MESES_2026.length - mesesPagadosCount) * cuotaMensual - saldoAFavor)
 
   return NextResponse.json({
     nombre: alumno.nombre,

@@ -8,6 +8,7 @@ interface Props {
   movimientos: Movimiento[]
   cuotaMensual: number
   pagosMap: Record<string, string[]>
+  saldoAFavorMap: Record<string, number>
 }
 
 const hoy = new Date()
@@ -17,7 +18,7 @@ function esVencido(mesKey: string) {
   return mesKey < mesActual
 }
 
-export default function TablaAlumnosTesorero({ alumnos, movimientos, cuotaMensual, pagosMap }: Props) {
+export default function TablaAlumnosTesorero({ alumnos, movimientos, cuotaMensual, pagosMap, saldoAFavorMap }: Props) {
   const [expandido, setExpandido] = useState<string | null>(null)
   const [soloPendientes, setSoloPendientes] = useState(false)
 
@@ -60,8 +61,9 @@ export default function TablaAlumnosTesorero({ alumnos, movimientos, cuotaMensua
           <tbody>
             {alumnosFiltrados.map((alumno, i) => {
               const mesesPagados = pagosMap[alumno.id] ?? []
-              const pagado = mesesPagados.length * cuotaMensual
-              const pendiente = (MESES_2026.length - mesesPagados.length) * cuotaMensual
+              const saldoAFavor = saldoAFavorMap[alumno.id] ?? 0
+              const pagado = mesesPagados.length * cuotaMensual + saldoAFavor
+              const pendiente = Math.max(0, (MESES_2026.length - mesesPagados.length) * cuotaMensual - saldoAFavor)
               const alDia = pendiente === 0
               const isOpen = expandido === alumno.id
               const movAlumno = movimientos.filter(m => m.alumno_id === alumno.id)
@@ -90,6 +92,12 @@ export default function TablaAlumnosTesorero({ alumnos, movimientos, cuotaMensua
                             ⚠ {mesesVencidosSinPagar}
                           </span>
                         )}
+                        {saldoAFavor > 0 && (
+                          <span title={`Saldo a favor: ${formatCLP(saldoAFavor)}`}
+                            style={{ fontSize: '0.7rem', fontWeight: 700, background: 'var(--dorado-claro)', color: 'var(--dorado-oscuro)', border: '1px solid var(--dorado)', borderRadius: '9999px', padding: '0.1rem 0.4rem' }}>
+                            ◑ {formatCLP(saldoAFavor)}
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td style={{ padding: '0.7rem 0.75rem', textAlign: 'center', color: 'var(--texto-suave)' }}>
@@ -114,6 +122,7 @@ export default function TablaAlumnosTesorero({ alumnos, movimientos, cuotaMensua
                         <DetalleAlumnoTesorero
                           alumno={alumno}
                           mesesPagados={mesesPagados}
+                          saldoAFavor={saldoAFavor}
                           movimientos={movAlumno}
                           cuotaMensual={cuotaMensual}
                         />
@@ -130,9 +139,10 @@ export default function TablaAlumnosTesorero({ alumnos, movimientos, cuotaMensua
   )
 }
 
-function DetalleAlumnoTesorero({ alumno, mesesPagados, movimientos, cuotaMensual }: {
+function DetalleAlumnoTesorero({ alumno, mesesPagados, saldoAFavor, movimientos, cuotaMensual }: {
   alumno: Alumno
   mesesPagados: string[]
+  saldoAFavor: number
   movimientos: Movimiento[]
   cuotaMensual: number
 }) {
@@ -149,8 +159,13 @@ function DetalleAlumnoTesorero({ alumno, mesesPagados, movimientos, cuotaMensual
     }
   }
 
+  // Primer mes sin pagar donde aplica el saldo a favor
+  const primerMesSinPagar = MESES_2026.find(m => !pagadosSet.has(m.key))
+  const mesParcial = saldoAFavor > 0 && primerMesSinPagar ? primerMesSinPagar.key : null
+  const pct = mesParcial ? Math.round((saldoAFavor / cuotaMensual) * 100) : 0
+
   function toggleSeleccion(mesKey: string) {
-    if (pagadosSet.has(mesKey)) return
+    if (pagadosSet.has(mesKey) || mesKey === mesParcial) return
     setSeleccionados(prev => {
       const next = new Set(prev)
       if (next.has(mesKey)) next.delete(mesKey)
@@ -199,12 +214,8 @@ function DetalleAlumnoTesorero({ alumno, mesesPagados, movimientos, cuotaMensual
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          fecha,
-          categoria: 'Cuotas',
-          descripcion,
-          monto: cuotaMensual,
-          alumno_id: alumno.id,
-          mes_cuota: mesKey,
+          fecha, categoria: 'Cuotas', descripcion,
+          monto: cuotaMensual, alumno_id: alumno.id, mes_cuota: mesKey,
         }),
       })
     ))
@@ -244,11 +255,36 @@ function DetalleAlumnoTesorero({ alumno, mesesPagados, movimientos, cuotaMensual
           const info = pagosConInfo.get(key)
           const vencido = esVencido(key)
           const seleccionado = seleccionados.has(key)
+          const esParcial = key === mesParcial
+
+          if (esParcial) {
+            return (
+              <div key={key} style={{
+                borderRadius: '0.4rem',
+                overflow: 'hidden',
+                border: '2px solid var(--dorado)',
+                position: 'relative',
+                minHeight: '52px',
+              }}>
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  background: `linear-gradient(to right, var(--azul) ${pct}%, #fff3cd ${pct}%)`,
+                }} />
+                <div style={{ position: 'relative', zIndex: 1, padding: '0.4rem 0.6rem', textAlign: 'left' }}>
+                  <p style={{ margin: 0, fontSize: '0.78rem', fontWeight: 700, color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
+                    ◑ {label}
+                  </p>
+                  <p style={{ margin: 0, fontSize: '0.68rem', fontWeight: 600, color: 'var(--dorado-oscuro)' }}>
+                    {formatCLP(saldoAFavor)}
+                  </p>
+                </div>
+              </div>
+            )
+          }
 
           let bg = 'white'
           let border = 'var(--borde)'
           let textColor = 'var(--texto-suave)'
-
           if (pagado) { bg = 'var(--azul)'; border = 'var(--dorado)'; textColor = 'white' }
           else if (seleccionado) { bg = 'var(--dorado-claro)'; border = 'var(--dorado)'; textColor = 'var(--dorado-oscuro)' }
           else if (vencido) { bg = '#fff3cd'; border = '#ffc107'; textColor = '#856404' }

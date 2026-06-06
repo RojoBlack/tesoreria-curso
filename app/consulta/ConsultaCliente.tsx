@@ -7,6 +7,7 @@ interface EstadoCuota {
   label: string
   pagado: boolean
   fecha?: string
+  parcial: number
 }
 
 interface ResultadoConsulta {
@@ -124,12 +125,7 @@ function ResultadoView({ resultado, onVolver }: { resultado: ResultadoConsulta; 
         </div>
       </div>
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '0.75rem',
-        marginBottom: '1.5rem',
-      }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.5rem' }}>
         <div className="card" style={{ padding: '1rem' }}>
           <p style={{ margin: '0 0 0.25rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--texto-suave)' }}>
             Pagado
@@ -153,35 +149,76 @@ function ResultadoView({ resultado, onVolver }: { resultado: ResultadoConsulta; 
           Estado por mes · Cuota {formatCLP(cuotaMensual)}/mes
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '0.5rem' }}>
-          {cuotas.map(c => (
-            <div key={c.mes} style={{
-              borderRadius: '0.5rem',
-              padding: '0.6rem 0.75rem',
-              background: c.pagado ? 'var(--azul)' : 'var(--fondo)',
-              border: `2px solid ${c.pagado ? 'var(--dorado)' : 'var(--borde)'}`,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              transition: 'all 0.15s',
-            }}>
-              <span style={{ fontSize: '1rem', color: c.pagado ? 'var(--dorado)' : 'var(--texto-suave)' }}>{c.pagado ? '✓' : '○'}</span>
-              <div>
-                <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: c.pagado ? 'white' : 'var(--texto)' }}>
-                  {c.label}
-                </p>
-                {c.pagado && c.fecha && (
-                  <p style={{ margin: 0, fontSize: '0.7rem', color: 'rgba(255,255,255,0.7)' }}>
-                    {new Date(c.fecha + 'T12:00:00').toLocaleDateString('es-CL', { day: '2-digit', month: 'short' })}
+          {cuotas.map(c => {
+            const pct = c.parcial > 0 ? Math.round((c.parcial / cuotaMensual) * 100) : 0
+
+            if (c.parcial > 0) {
+              // Mes con abono parcial: mitad azul / mitad gris
+              return (
+                <div key={c.mes} style={{
+                  borderRadius: '0.5rem',
+                  overflow: 'hidden',
+                  border: '2px solid var(--dorado)',
+                  position: 'relative',
+                  minHeight: '62px',
+                }}>
+                  {/* Fondo dividido */}
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    background: `linear-gradient(to right, var(--azul) ${pct}%, var(--fondo) ${pct}%)`,
+                  }} />
+                  {/* Contenido */}
+                  <div style={{
+                    position: 'relative', zIndex: 1,
+                    padding: '0.6rem 0.75rem',
+                    display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  }}>
+                    <span style={{ fontSize: '1rem', color: 'var(--dorado)' }}>◑</span>
+                    <div>
+                      <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: 'var(--texto)' }}>
+                        {c.label}
+                      </p>
+                      <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--dorado-oscuro)', fontWeight: 600 }}>
+                        Abonado {formatCLP(c.parcial)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )
+            }
+
+            return (
+              <div key={c.mes} style={{
+                borderRadius: '0.5rem',
+                padding: '0.6rem 0.75rem',
+                background: c.pagado ? 'var(--azul)' : 'var(--fondo)',
+                border: `2px solid ${c.pagado ? 'var(--dorado)' : 'var(--borde)'}`,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                transition: 'all 0.15s',
+              }}>
+                <span style={{ fontSize: '1rem', color: c.pagado ? 'var(--dorado)' : 'var(--texto-suave)' }}>
+                  {c.pagado ? '✓' : '○'}
+                </span>
+                <div>
+                  <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: c.pagado ? 'white' : 'var(--texto)' }}>
+                    {c.label}
                   </p>
-                )}
-                {!c.pagado && (
-                  <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--texto-suave)' }}>
-                    Pendiente
-                  </p>
-                )}
+                  {c.pagado && c.fecha && (
+                    <p style={{ margin: 0, fontSize: '0.7rem', color: 'rgba(255,255,255,0.7)' }}>
+                      {new Date(c.fecha + 'T12:00:00').toLocaleDateString('es-CL', { day: '2-digit', month: 'short' })}
+                    </p>
+                  )}
+                  {!c.pagado && (
+                    <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--texto-suave)' }}>
+                      Pendiente
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 

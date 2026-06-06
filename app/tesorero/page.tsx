@@ -41,16 +41,29 @@ export default async function TesoreroPage() {
   const saldo = totalIngresos + totalGastos
 
   const pagosMap = new Map<string, Set<string>>()
-  for (const a of alumnosActivos) pagosMap.set(a.id, new Set())
+  const saldoAFavorMap = new Map<string, number>()
+  for (const a of alumnosActivos) {
+    pagosMap.set(a.id, new Set())
+    saldoAFavorMap.set(a.id, 0)
+  }
   for (const mov of movimientos) {
-    if (mov.alumno_id && mov.mes_cuota && mov.monto > 0 && mov.categoria === 'Cuotas') {
-      pagosMap.get(mov.alumno_id)?.add(mov.mes_cuota)
+    if (mov.alumno_id && mov.monto > 0 && mov.categoria === 'Cuotas') {
+      if (mov.mes_cuota) {
+        pagosMap.get(mov.alumno_id)?.add(mov.mes_cuota)
+      } else {
+        saldoAFavorMap.set(mov.alumno_id, (saldoAFavorMap.get(mov.alumno_id) ?? 0) + mov.monto)
+      }
     }
   }
 
   const totalEsperado = alumnosActivos.length * MESES_2026.length * cuotaMensual
   const totalRecaudado = [...pagosMap.values()].reduce((s, m) => s + m.size * cuotaMensual, 0)
-  const alumnosAlDia = alumnosActivos.filter(a => pagosMap.get(a.id)?.size === MESES_2026.length).length
+    + [...saldoAFavorMap.values()].reduce((s, v) => s + v, 0)
+  const alumnosAlDia = alumnosActivos.filter(a => {
+    const meses = pagosMap.get(a.id)?.size ?? 0
+    const saldo = saldoAFavorMap.get(a.id) ?? 0
+    return Math.max(0, (MESES_2026.length - meses) * cuotaMensual - saldo) === 0
+  }).length
 
   return (
     <>
@@ -86,6 +99,7 @@ export default async function TesoreroPage() {
             movimientos={movimientos}
             cuotaMensual={cuotaMensual}
             pagosMap={Object.fromEntries([...pagosMap.entries()].map(([k, v]) => [k, [...v]]))}
+            saldoAFavorMap={Object.fromEntries(saldoAFavorMap)}
           />
         </div>
 
